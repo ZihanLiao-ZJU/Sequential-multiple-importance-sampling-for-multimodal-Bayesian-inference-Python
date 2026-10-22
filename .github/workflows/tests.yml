@@ -1,0 +1,24 @@
+name: Python parity regressions
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Deterministic regressions
+        run: python -m unittest discover -s tests -v
+      - name: Replay all six Octave fixtures
+        run: python validate.py --replay

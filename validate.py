@@ -1,11 +1,13 @@
-"""Validate the Python port against the original MATLAB implementation.
+"""Validate Python against recorded Octave runs of the MATLAB source.
 
 Part 1 - replay (exact): validation/reference/ holds random number streams and
-results recorded by running the ORIGINAL MATLAB code once per benchmark (one
+results recorded by running the MATLAB source under Octave once per benchmark (one
 SeMIS run followed by one SuS run, as in one iteration of drive_SuS_SeMIS.m;
 validation/matlab/record_reference.m). The Python code is driven by the same
-random numbers and must reproduce the MATLAB proposal parameters, likelihood
+random draws/selected indices and compares the recorded proposal parameters, likelihood
 call counts, log-evidence (MIS, SIS and SuS) and posterior samples to round-off.
+PASS* is conditional on prescribed proposal parameters, not a direct replay.
+Legacy fixtures do not record probabilities; Python weight invariants are separate.
 
 Part 2 - statistics: repeated Python runs on the bundled benchmarks; the mean
 log-evidence of SeMIS (MIS estimator) and SuS is compared with the reference.
@@ -15,9 +17,9 @@ log-evidence of SeMIS (MIS estimator) and SuS is compared with the reference.
     python validate.py --nrun 50    # part 2 with 50 runs per benchmark
 """
 import argparse
-import glob
 import os
 import sys
+from pathlib import Path
 
 import numpy as np
 from scipy.io import loadmat
@@ -30,6 +32,23 @@ from semis_bayes import _utils  # noqa: E402
 from replay import ReplayRNG  # noqa: E402
 from semis_bayes.log_operations import logmean  # noqa: E402
 from semis_bayes.support_functions.ResRat import ResRat  # noqa: E402
+from weights import semis_probabilities, sus_probabilities  # noqa: E402
+
+EXPECTED_CASES = ("eggbox_2_1", "loggamma_2_1", "loggamma_2_2", "loggamma_5_1",
+                  "shells_2_1", "shells_5_1")
+
+
+def reference_files(cases=None):
+    """Require both files for every explicitly selected case (all six by default)."""
+    cases = EXPECTED_CASES if cases is None else tuple(cases)
+    if not cases or any(case not in EXPECTED_CASES for case in cases):
+        raise ValueError("select at least one known replay case")
+    folder = Path(HERE) / "validation" / "reference"
+    missing = [str(folder / f"{prefix}_{case}.mat") for case in cases
+               for prefix in ("rec", "res") if not (folder / f"{prefix}_{case}.mat").is_file()]
+    if missing:
+        raise FileNotFoundError("missing required replay fixtures:\n" + "\n".join(missing))
+    return [str(folder / f"rec_{case}.mat") for case in cases]
 
 
 def make_lkf(case, ndim):
@@ -38,7 +57,7 @@ def make_lkf(case, ndim):
             "eggbox": lambda: sb.LKF_2D_Eggbox()}[case]()
 
 
-def run_once(Tfun, G_semis=None):
+def run_once(Tfun, G_semis=None, check_weights=None):
     """One SeMIS run and one SuS run, as in one iteration of drive_SuS_SeMIS.
 
     G_semis fixes the SeMIS proposal parameters [r_i, r_max] of every level
@@ -57,26 +76,50 @@ def run_once(Tfun, G_semis=None):
     r = dict(z_mis=out_mis.Z, u_pos_semis=out_mis.PosSim()[0],
              z_sis=out_mis.C[-1] + out_sm["g"][-1][1], G_semis=np.vstack(out_sm["g"]),
              Ncal_semis=np.asarray(out_sm["Ncal"]), Nite_semis=out_sm["Nite"], out_semis=out_sm)
+    if check_weights is not None:
+        check_weights(semis_probabilities(out_sm, out_mis))
     out_sm = smc_SuS.RunIte()
     out_sus = IntBay_SuS.BayInf(out_sm)
+    if check_weights is not None:
+        check_weights(sus_probabilities(out_sm))
     r.update(z_sus=out_sus["z"], u_pos_sus=out_sus["x_pos"], G_sus=np.vstack(out_sm["g"]),
              Ncal_sus=np.asarray(out_sm["Ncal"]), Nite_sus=out_sm["Nite"])
     return r
 
 
 def maxdiff(a, b):
-    a, b = np.asarray(a, float), np.asarray(b, float)
-    if a.shape != b.shape or not np.array_equal(np.isfinite(a), np.isfinite(b)):
+    # Expected benchmark outputs are real. Reject imaginary corruption before
+    # float conversion can silently discard it (including imaginary NaN/Inf).
+    for value in (a, b):
+        value = np.asarray(value)
+        if np.iscomplexobj(value) and np.any(np.imag(value) != 0):
+            return np.inf
+    a, b = np.asarray(np.real(a), float), np.asarray(np.real(b), float)
+    if (a.shape != b.shape or np.any(np.isnan(a)) or np.any(np.isnan(b))
+            or not np.array_equal(np.isposinf(a), np.isposinf(b))
+            or not np.array_equal(np.isneginf(a), np.isneginf(b))):
         return np.inf
     f = np.isfinite(a)
     return float(np.max(np.abs(a[f] - b[f]), initial=0.0))
 
 
 def compare(p, m, rng):
+    finite_keys = ("z_mis", "z_sis", "z_sus", "u_pos_semis", "u_pos_sus",
+                   "Ncal_semis", "Ncal_sus", "Nite_semis", "Nite_sus")
+    count_keys = ("Ncal_semis", "Ncal_sus", "Nite_semis", "Nite_sus")
+    for result in (p, m):
+        for key in finite_keys + ("G_semis", "G_sus"):
+            value = np.asarray(result[key])
+            if value.size == 0 or (np.iscomplexobj(value) and np.any(np.imag(value) != 0)):
+                return False, np.inf
+            if key in finite_keys and not np.all(np.isfinite(value)):
+                return False, np.inf
+            if key in count_keys and (np.any(value < 0) or np.any(value != np.floor(np.real(value)))):
+                return False, np.inf
     d = max(maxdiff(p[k], m[k].reshape(np.shape(p[k])) if np.size(p[k]) == m[k].size else m[k])
             for k in ("z_mis", "z_sis", "z_sus", "G_semis", "G_sus", "u_pos_semis", "u_pos_sus"))
     same = all(np.array_equal(np.ravel(p[k]), m[k].ravel())
-               for k in ("Ncal_semis", "Ncal_sus", "Nite_semis", "Nite_sus"))
+               for k in count_keys)
     return same and d < 1e-8 and rng.done, d
 
 
@@ -84,7 +127,7 @@ def replay_case(fn, Tfun, G_semis=None):
     rng = ReplayRNG(fn)
     _utils.set_rng(rng)
     try:
-        return run_once(Tfun, G_semis), rng
+        return run_once(Tfun, G_semis, rng.check_last_probabilities), rng
     except RuntimeError:            # the random stream no longer matches: the runs diverged
         return None, rng
     finally:
@@ -104,13 +147,15 @@ def search_tie(Tfun, out, G_m, G_p):
     return k, f
 
 
-def replay():
-    print("Part 1: replay of MATLAB random streams (exact comparison)")
-    print(f"{'case':14s} {'logZ MIS (Py)':>14s} {'logZ MIS (MATLAB)':>17s} {'logZ SuS (Py)':>14s} "
-          f"{'logZ SuS (MATLAB)':>17s} {'max|d|':>8s}  result")
+def replay(cases=None):
+    files = reference_files(cases)
+    print(f"Part 1: {len(files)}/{len(EXPECTED_CASES)} selected Octave reference replays")
+    print("Legacy fixtures replay selected indices, not recorded weights; separate Python weight invariants are checked.")
+    print(f"{'case':14s} {'logZ MIS (Py)':>14s} {'logZ MIS (ref)':>17s} {'logZ SuS (Py)':>14s} "
+          f"{'logZ SuS (ref)':>17s} {'max|d|':>8s}  result")
     ok_all = True
     notes = []
-    for fn in sorted(glob.glob(os.path.join(HERE, "validation", "reference", "rec_*.mat"))):
+    for fn in files:
         tag = os.path.basename(fn)[4:-4]
         case, ndim, _ = tag.split("_")
         T = make_lkf(case, int(ndim))
@@ -190,9 +235,15 @@ if __name__ == "__main__":
     ap.add_argument("--replay", action="store_true", help="only run the replay comparison")
     ap.add_argument("--nrun", type=int, default=50, help="runs per benchmark in part 2 (default 50)")
     ap.add_argument("--seed", type=int, default=2025)
+    ap.add_argument("--case", choices=EXPECTED_CASES, action="append",
+                    help="explicit replay subset; repeat to select multiple cases (default: all six)")
     a = ap.parse_args()
-    ok = replay()
+    try:
+        ok = replay(a.case)
+    except (FileNotFoundError, ValueError) as exc:
+        ap.exit(1, f"Replay validation failed: {exc}\n")
     if not a.replay:
         ok &= statistics(a.nrun, a.seed)
-    print("\nAll checks passed." if ok else "\nSome checks did not pass.")
+    print("\nSelected checks passed (PASS* is conditional; no native MATLAB or recorded-weight parity claim)."
+          if ok else "\nSome checks did not pass.")
     sys.exit(0 if ok else 1)

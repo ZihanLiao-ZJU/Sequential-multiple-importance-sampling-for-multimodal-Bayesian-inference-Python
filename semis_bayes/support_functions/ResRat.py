@@ -10,6 +10,8 @@ def ResRat(intBay, y, g):
     the distribution the samples ``y`` were drawn from.
 
     Returns ``lograt`` [Nc x Ns] (shifted so that its maximum is 0) and the shift ``c``.
+    This Python API deliberately preserves the input chain axes. MATLAB flattens
+    them to [Nc*Ns x 1]; use ``lograt.reshape(-1, 1, order="F")`` for that layout.
     """
     y2 = flat(y)
     intBay = copy.copy(intBay)

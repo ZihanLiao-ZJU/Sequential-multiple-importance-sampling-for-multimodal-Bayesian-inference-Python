@@ -6,6 +6,11 @@ from ..log_operations import logsum
 from ._marginals import ks_statistic, plot_2d
 
 
+def _matlab_grid(stop, step):
+    """Positive-step MATLAB ``0:step:stop`` grid, never above ``stop``."""
+    return np.arange(int(np.floor(stop / step)) + 1) * step
+
+
 class LKF_2D_Eggbox:
     """2D eggbox-shaped likelihood.
 
@@ -30,8 +35,8 @@ class LKF_2D_Eggbox:
         # first use (KStest) because the double integral is expensive.
         if self._marg is None:
             dx_ref, dx_itg = 1e-3, 5e-4
-            x_ref = np.arange(0, 10 * np.pi + dx_ref / 2, dx_ref)
-            x_itg = np.arange(0, 10 * np.pi + dx_itg / 2, dx_itg)
+            x_ref = _matlab_grid(10 * np.pi, dx_ref)
+            x_itg = _matlab_grid(10 * np.pi, dx_itg)
             # the eggbox is symmetric in its two arguments: both marginals are equal
             pdf = np.zeros(x_ref.size)
             ci = np.cos(x_itg / 2)
