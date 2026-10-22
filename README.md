@@ -162,17 +162,44 @@ During the run, each iteration prints the sample size, the number of chains, the
 ## Validation against MATLAB
 
 ```bash
+python -m unittest discover -s tests -v
 python validate.py
 ```
 
-1. **Exact replay.** `validation/reference/` contains, for each recorded case, every random number drawn by one SeMIS run and one SuS run of the original MATLAB code (one iteration of `drive_SuS_SeMIS.m`), together with its results. `validate.py` feeds the same random numbers to the Python code, which then reproduces the MATLAB run: the same proposal parameters, likelihood-call counts, log-evidence (MIS, SIS and SuS estimators) and resampled posterior samples, with differences at round-off level.
+1. **Octave reference replay.** `validation/reference/` contains six recorded cases of the MATLAB source running under Octave, including random draws and selected resampling indices, together with the resulting proposal parameters, likelihood-call counts, log-evidence and posterior samples. `validate.py` compares the Python run to those fixtures. `PASS` means a direct replay agrees to round-off; `PASS*` means only a replay with the reference proposal parameters fixed agrees (see below). Neither means native MATLAB runtime equivalence.
 2. **Statistics.** 50 independent Python runs per benchmark (`--nrun` to change); the mean log-evidence of SeMIS (MIS estimator) and SuS is compared with the reference value.
+
+All six `rec_*.mat` / `res_*.mat` pairs are required by default. Missing fixtures,
+NaNs, or mismatched infinity signs fail validation rather than silently passing.
+For an explicitly limited check, select cases by name, for example:
+
+```bash
+python validate.py --replay --case eggbox_2_1 --case shells_2_1
+```
+
+The output reports the selected count out of six. Legacy streams contain selected
+indices, **not reference resampling probabilities**, so matching posterior samples
+alone cannot establish cross-language weight parity. During replay the supplied
+weights are checked for validity and support. Independent Python density formulas
+also check MIS weights/evidence and the actual probabilities supplied to both MIS
+and SuS posterior resampling. These are Python invariants, not recorded MATLAB
+weight comparisons. The deterministic unit tests cover these checks, the sampler
+and likelihood formulas, prior transforms and the edge-case regressions without
+requiring MATLAB or the binary reference fixtures.
+
+One inherited limitation is explicitly tracked as an `expectedFailure`: `logsum`
+does not correctly reduce an array containing only negative signed-log terms
+(`log(abs(x)) + i*pi`). This also limits corresponding all-negative prefixes in
+`logcumsum`. The current change preserves complex cumulative outputs instead of
+discarding their signs, but does not rewrite that shared MATLAB/Python reduction
+algorithm. The benchmark importance weights are nonnegative and do not use this
+unsupported case.
 
 Results of `python validate.py` (50 runs per benchmark):
 
-| Case | Replay vs MATLAB | SeMIS mean logZ (std) | SuS mean logZ (std) | Reference |
+| Case | Replay vs Octave fixtures | SeMIS mean logZ (std) | SuS mean logZ (std) | Reference |
 |---|---|---|---|---|
-| Gaussian + LogGamma, n = 2 | identical (2 seeds, see note) | −8.193 (0.074) | −8.200 (0.130) | −8.189 |
+| Gaussian + LogGamma, n = 2 | one direct; one conditional (see note) | −8.193 (0.074) | −8.200 (0.130) | −8.189 |
 | Gaussian + LogGamma, n = 5 | identical | −20.465 (0.196) | −20.533 (0.280) | −20.472 |
 | Gaussian shells, n = 2 | identical | −1.751 (0.074) | −1.774 (0.112) | −1.75 |
 | Gaussian shells, n = 5 | identical | −5.677 (0.148) | −5.709 (0.166) | −5.67 |
@@ -197,6 +224,10 @@ The reference streams were recorded by running the original MATLAB code under GN
 - Random numbers are drawn through `semis_bayes._utils` (`randn`, `rand`, `randperm`, `randi`, `randsample`), backed by NumPy; `np.random.seed` fixes a run.
 - `MIS.CCDF` and `MIS.KLDEst` are not ported: they call `IndPriWgt`, `IndPosWgt` and `EpyWgt`, which are not part of the MATLAB repository, and the driver does not use them. `LKF_2D_5Gaussian`, mentioned in a comment of `drive_SuS_SeMIS.m`, is not in the MATLAB repository either.
 - The reference marginals of `LKF_2D_Eggbox` (used only by `KStest`) are computed on first use rather than in the constructor.
+- Eggbox reference grids follow MATLAB's `0:step:10*pi` endpoints; no point beyond `10*pi` is added.
+- `ResRat` intentionally keeps the Python `[Nc, Ns]` chain layout, whereas MATLAB flattens it to `[Nc*Ns, 1]`. Use `ratio.reshape(-1, 1, order="F")` for the MATLAB layout; flattened values and the main estimators agree.
+- Normal/Lognormal/GEV `U2X` shortcuts are used only when their parameter attributes exist; generic frozen SciPy wrappers fall back to `icdf(norm.cdf(...))`.
+- The numerical Nataf correlation search supports negative non-Normal/Lognormal correlations and skips independent pairs. The MATLAB source's numerical search is positive-only; this is an intentional correctness fix, not bit-for-bit behavior preservation.
 
 ## Citation
 
