@@ -15,7 +15,7 @@ def ResRat(intBay, y, g):
     """
     y2 = flat(y)
     intBay = copy.copy(intBay)
-    intBay.G = g
+    intBay.G = g if isinstance(g, dict) else {**intBay.G, "parameters": g}
     intBay.Y = y2[2:, :]
     Li = intBay.EvlLKF()
     pi = intBay.EvlPDF()

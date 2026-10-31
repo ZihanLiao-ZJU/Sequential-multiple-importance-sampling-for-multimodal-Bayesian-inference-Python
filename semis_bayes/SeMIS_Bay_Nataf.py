@@ -40,12 +40,12 @@ class SeMIS_Bay_Nataf:
         self.X = None
         self.Y = None
         # intermediate parameters G = [r_i, r_max]
-        self.G = np.array([-np.inf, -np.inf])
+        self.G = {"parameters": np.array([-np.inf, -np.inf]), "lambda": 0.6}
 
     def EvlLKF(self):
         """Soft truncation term logLi = min(logL - r_max - r_i, 0)."""
         logL = self.Y[0, :]
-        r_i, r_max = self.G[0], self.G[1]
+        r_i, r_max = self.G["parameters"][0], self.G["parameters"][1]
         if np.isinf(r_i):
             return np.zeros_like(logL)
         return np.fmin(logL - r_max - r_i, 0)
@@ -62,9 +62,9 @@ class SeMIS_Bay_Nataf:
         """
         obj = copy.copy(self)
         logL = flat(y)[2, :]
-        r_i = obj.G[0]
-        r_max = max(np.nanmax(logL), obj.G[1])
-        dr_max = r_max - obj.G[1]
+        r_i = obj.G["parameters"][0]
+        r_max = max(np.nanmax(logL), obj.G["parameters"][1])
+        dr_max = r_max - obj.G["parameters"][1]
 
         maxi = 100
         err_min = np.inf
@@ -82,12 +82,12 @@ class SeMIS_Bay_Nataf:
                 r_i = r_tmp
 
         G = np.array([r_i, r_max])
-        obj.G = G
-        return G, obj
+        obj.G = {**obj.G, "parameters": G}
+        return obj.G, obj
 
     @property
     def FlgCvg(self):
-        return bool(self.G[0] >= -1e-4)
+        return bool(self.G["parameters"][0] >= -1e-4)
 
     def EvlY(self, u):
         """Evaluate and cache the base terms obj.Y = [logL; logPi] at u (U-space)."""

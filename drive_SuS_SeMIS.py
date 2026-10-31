@@ -9,6 +9,8 @@ import argparse
 
 import numpy as np
 
+from semis_bayes.mcmc_samplers import CW_aMH, aCS, HMC, ES
+
 from semis_bayes import (MIS, ES, LKF_2D_Eggbox, LKF_nD_GaussianLogGamma,  # noqa: F401
                          LKF_nD_GaussianShells, SeMCS, SeMIS_Bay_Nataf, SuS_Bay_Nataf)
 
@@ -16,7 +18,9 @@ parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.R
 parser.add_argument("--nrun", type=int, default=100, help="number of independent runs (default 100)")
 parser.add_argument("--seed", type=int, default=None, help="random seed")
 parser.add_argument("--quiet", action="store_true", help="do not print the progress of each iteration")
+parser.add_argument("--sampler", choices=["CW_aMH", "aCS", "HMC", "ES"], default="ES")
 args = parser.parse_args()
+SamplerClass = {"CW_aMH": CW_aMH, "aCS": aCS, "HMC": HMC, "ES": ES}[args.sampler]
 if args.seed is not None:
     np.random.seed(args.seed)
 
@@ -32,8 +36,8 @@ IntBay_SuS = SuS_Bay_Nataf(Tfun)              # SuS-based inference
 IntBay_SeMIS = SeMIS_Bay_Nataf(Tfun)          # SeMIS-based inference
 
 # Sequential Monte Carlo samplers
-smc_SuS = SeMCS(ES(IntBay_SuS))
-smc_SeMIS = SeMCS(ES(IntBay_SeMIS))
+smc_SuS = SeMCS(SamplerClass(IntBay_SuS))
+smc_SeMIS = SeMCS(SamplerClass(IntBay_SeMIS))
 
 # Sampling budget per level
 smc_SeMIS.NumSam = 1700
@@ -66,7 +70,7 @@ for irun in range(Nrun):
 
     u_pos = out_mis.PosSim()[0]               # posterior samples (U-space)
     Npos_SeMIS[irun] = u_pos.shape[1]
-    logz_SeMIS_SIS[irun] = out_mis.C[-1] + out_sm["g"][-1][1]   # SIS evidence
+    logz_SeMIS_SIS[irun] = out_mis.C[-1] + out_sm["g"][-1]["parameters"][1]   # SIS evidence
 
     x_pos_SeMIS = Tfun.Pdis.U2X(u_pos)        # map to physical space
 

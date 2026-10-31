@@ -11,7 +11,7 @@ def _levels(out, soft):
     y = [np.asarray(v).reshape(4, -1, order="F") for v in out["y"]]
     c = np.zeros(len(y) + 1)
     for i, yi in enumerate(y if soft else y[:-1]):
-        ri, rmax = out["g"][i + 1]
+        ri, rmax = out["g"][i + 1]["parameters"]
         if np.isinf(ri):
             li = np.zeros(yi.shape[1])
         elif soft:
@@ -33,6 +33,7 @@ def semis_probabilities(out, mis):
     for i, yi in enumerate(y):
         q = []
         for j, g in enumerate(out["g"][:-1]):
+            g=g["parameters"]
             li = np.zeros(yi.shape[1]) if np.isinf(g[0]) else np.minimum(yi[2] - g[1] - g[0], 0)
             q.append(li + yi[3] - c[j])
         q = np.asarray(q)
@@ -54,7 +55,7 @@ def sus_probabilities(out):
     for i, yi in enumerate(y):
         w = yi[2] + yi[3] - yi[0] - yi[1] + c[i]
         if i < len(y) - 1:
-            threshold = np.sum(out["g"][i + 1])
+            threshold = np.sum(out["g"][i + 1]["parameters"])
             w = np.where(yi[2] < threshold, w, -np.inf)
         weights.append(w)
     w = np.concatenate(weights)

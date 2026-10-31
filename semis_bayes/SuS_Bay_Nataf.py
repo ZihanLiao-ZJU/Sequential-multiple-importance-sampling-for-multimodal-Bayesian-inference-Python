@@ -35,12 +35,12 @@ class SuS_Bay_Nataf:
         self.Ncal = None
         self.X = None
         self.Y = None
-        self.G = np.array([-np.inf, -np.inf])
+        self.G = {"parameters": np.array([-np.inf, -np.inf]), "lambda": 0.6}
 
     def EvlLKF(self):
         """HARD truncation term: logLi = log(I(logL > r_max + r_i))."""
         logL = self.Y[0, :]
-        r_i, r_max = self.G[0], self.G[1]
+        r_i, r_max = self.G["parameters"][0], self.G["parameters"][1]
         if np.isinf(r_i):
             return np.zeros_like(logL)
         with np.errstate(divide="ignore"):
@@ -57,18 +57,18 @@ class SuS_Bay_Nataf:
         Nsam = logL.size
         l_sorted = np.sort(logL)[::-1]
         Nsed = int(mround(Nsam * p))
-        r_max = max(np.nanmax(logL), obj.G[1])
+        r_max = max(np.nanmax(logL), obj.G["parameters"][1])
         fth = (l_sorted[Nsed - 1] + l_sorted[Nsed]) / 2 if Nsed > 0 else l_sorted[0]
         G = np.array([fth - r_max, r_max])
-        obj.G = G
-        return G, obj
+        obj.G = {**obj.G, "parameters": G}
+        return obj.G, obj
 
     def SltSed(self, u, y, Nsam):
         """Select seeds satisfying the hard truncation condition."""
         u = flat(u)[:self.Ndim, :]
         y = flat(y)[:self.Nfun, :]
         logL = y[2, :]
-        Lth = self.G[1] + self.G[0]
+        Lth = self.G["parameters"][1] + self.G["parameters"][0]
         Ns = mround(Nsam / np.arange(1, Nsam + 1))
         Nsed = mround(Nsam / Ns)
         ind_sed = logL > Lth
@@ -91,7 +91,7 @@ class SuS_Bay_Nataf:
 
     @property
     def FlgCvg(self):
-        return bool(self.G[0] >= -1e-1)
+        return bool(self.G["parameters"][0] >= -1e-1)
 
     def BayInf(self, inp):
         """Evidence estimation and posterior resampling from the SuS levels."""
@@ -112,9 +112,9 @@ class SuS_Bay_Nataf:
         zi = np.zeros(Nite)
         for ite in range(Nite):
             yi = flat(y[ite])
-            Li = g[ite][0] + g[ite][1]
+            Li = g[ite]["parameters"][0] + g[ite]["parameters"][1]
             if ite < Nite - 1:
-                Li1 = g[ite + 1][0] + g[ite + 1][1]
+                Li1 = g[ite + 1]["parameters"][0] + g[ite + 1]["parameters"][1]
                 w_z = _mmin(logminus(yi[2, :], Li), logminus(Li1, Li))
             else:
                 w_z = logminus(yi[2, :], Li)
@@ -128,7 +128,7 @@ class SuS_Bay_Nataf:
             with np.errstate(divide="ignore", invalid="ignore"):
                 w_tmp = yi[2, :] + yi[3, :] - yi[0, :] - yi[1, :]
                 if ite < Nite - 1:
-                    w_tmp = w_tmp + np.log((yi[2, :] < g[ite + 1][0] + g[ite + 1][1]).astype(float))
+                    w_tmp = w_tmp + np.log((yi[2, :] < g[ite + 1]["parameters"][0] + g[ite + 1]["parameters"][1]).astype(float))
             w_tmp = np.where(np.isnan(w_tmp), -np.inf, w_tmp)
             w_pos.append(w_tmp)
 

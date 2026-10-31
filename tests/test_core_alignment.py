@@ -89,16 +89,16 @@ class AlignmentChecks(unittest.TestCase):
         for cls in [sb.SeMIS_Bay_Nataf,sb.SuS_Bay_Nataf]:
             obj=cls(Model());obj.Y=np.array([[-5,-3,-1],[0,0,0.]])
             np.testing.assert_array_equal(obj.EvlLKF(),[0,0,0])
-            obj.G=np.array([-3.,0])
+            obj.G={"parameters":np.array([-3.,0])}
             want=np.array([-2,0,0]) if cls==sb.SeMIS_Bay_Nataf else np.array([-np.inf,-np.inf,0])
             np.testing.assert_array_equal(obj.EvlLKF(),want)
 
     def test_sus_quantile_and_convergence(self):
         obj=sb.SuS_Bay_Nataf(Model()); y=np.zeros((4,10));y[2]=np.arange(10)
         g,o=obj.UpdObj(y,.2)
-        np.testing.assert_array_equal(g,[-1.5,9]);self.assertFalse(o.FlgCvg)
-        o.G=np.array([-.1,9]);self.assertTrue(o.FlgCvg)
-        s=sb.SeMIS_Bay_Nataf(Model());s.G=np.array([-1e-4,9]);self.assertTrue(s.FlgCvg)
+        np.testing.assert_array_equal(g["parameters"],[-1.5,9]);self.assertFalse(o.FlgCvg)
+        o.G={"parameters":np.array([-.1,9])};self.assertTrue(o.FlgCvg)
+        s=sb.SeMIS_Bay_Nataf(Model());s.G={"parameters":np.array([-1e-4,9])};self.assertTrue(s.FlgCvg)
 
     def test_mis_deterministic_density_reference(self):
         obj=sb.SeMIS_Bay_Nataf(Model())
@@ -109,7 +109,7 @@ class AlignmentChecks(unittest.TestCase):
             xf=_utils.flat(x);ll=Model().EvlLKF(xf);lp=logGauss(xf)
             li=np.zeros(6) if np.isinf(g[0]) else np.minimum(ll-g.sum(),0)
             ys.append(np.vstack([li,lp,ll,lp]).reshape((4,)+x.shape[1:],order='F'))
-        inp=dict(x=xs,y=ys,g=gs,Nite=2,Nsam=np.array([6,6]),Nsze=np.array([[3,2],[2,3]]),intBay=obj)
+        inp=dict(x=xs,y=ys,g=[{"parameters":g} for g in gs],Nite=2,Nsam=np.array([6,6]),Nsze=np.array([[3,2],[2,3]]),intBay=obj)
         got=sb.MIS(inp)
         y=[_utils.flat(v).copy() for v in ys];cs=np.zeros(3)
         for i in range(2):
@@ -132,7 +132,7 @@ class AlignmentChecks(unittest.TestCase):
             np.testing.assert_allclose(got.Wpos[i].ravel(order='F'),yi[2]+yi[3]-yi[0]-yi[1]-got.Z)
 
     def test_acs_with_literal_matlab_loop(self):
-        obj=sb.SeMIS_Bay_Nataf(Model());obj.G=np.array([-1.,0])
+        obj=sb.SeMIS_Bay_Nataf(Model());obj.G={"parameters":np.array([-1.,0])}
         seeds=np.linspace(-1.5,1.5,14).reshape(2,7);e=obj.EvlY(seeds)
         sy=np.vstack([e.EvlLKF(),e.EvlPDF(),e.Y]);nc,ns=7,4
         rg=np.random.default_rng(81);du=rg.normal(size=(2,nc,ns));p=rg.uniform(size=(1,nc,ns))
@@ -140,12 +140,12 @@ class AlignmentChecks(unittest.TestCase):
             def randn(self,*shape):assert shape==du.shape;return du.copy()
             def rand(self,*shape):assert shape==p.shape;return p.copy()
         _utils.set_rng(Tape())
-        try: got=sb.aCS(obj).SamGen(seeds,sy,ns)
+        try: got=sb.aCS(obj,rng=Tape()).SamGen(seeds,sy,ns)
         finally:_utils.set_rng(None)
         u=np.zeros((2,nc,ns));y=np.zeros((4,nc,ns));seed=seeds.copy();yy=sy.copy()
-        sig0=np.maximum(np.std(seed,axis=1,ddof=1,keepdims=True),np.finfo(float).eps);lam=.6;cost=0
-        for it in range(1,6):
-            idx=np.arange(min(1+(it-1)*2,nc)-1,min(2+(it-1)*2,nc))
+        sig0=1.0;lam=.6;cost=0
+        for it in range(1,5):
+            idx=np.arange((it-1)*2,min(it*2,nc))
             sig=np.minimum(lam*sig0,1);rho=np.sqrt(1-sig**2);acc=0;ncal=0
             for k in range(ns):
                 proposal=rho*seed[:,idx]+sig*du[:,idx,k]

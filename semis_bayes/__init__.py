@@ -14,7 +14,7 @@ from .SeMIS_Bay_Nataf import SeMIS_Bay_Nataf
 from .SuS_Bay_Nataf import SuS_Bay_Nataf
 from .distributions import Distribution, makedist
 from .likelihood_functions import LKF_2D_Eggbox, LKF_nD_GaussianLogGamma, LKF_nD_GaussianShells
-from .mcmc_samplers import ES, aCS
+from .mcmc_samplers import CW_aMH, aCS, HMC, ES
 
 __all__ = ["MIS", "Nataf", "SeMCS", "SeMIS_Bay_Nataf", "SuS_Bay_Nataf", "Distribution", "makedist",
-           "LKF_2D_Eggbox", "LKF_nD_GaussianLogGamma", "LKF_nD_GaussianShells", "ES", "aCS"]
+           "LKF_2D_Eggbox", "LKF_nD_GaussianLogGamma", "LKF_nD_GaussianShells", "ES", "aCS", "CW_aMH", "HMC"]

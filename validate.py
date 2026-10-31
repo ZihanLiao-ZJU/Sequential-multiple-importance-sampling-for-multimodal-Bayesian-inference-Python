@@ -57,15 +57,15 @@ def make_lkf(case, ndim):
             "eggbox": lambda: sb.LKF_2D_Eggbox()}[case]()
 
 
-def run_once(Tfun, G_semis=None, check_weights=None):
+def run_once(Tfun, G_semis=None, check_weights=None, rng=None):
     """One SeMIS run and one SuS run, as in one iteration of drive_SuS_SeMIS.
 
     G_semis fixes the SeMIS proposal parameters [r_i, r_max] of every level
     (SeMCS.G) instead of searching them with fminbnd.
     """
     IntBay_SuS = sb.SuS_Bay_Nataf(Tfun)
-    smc_SuS = sb.SeMCS(sb.ES(IntBay_SuS))
-    smc_SeMIS = sb.SeMCS(sb.ES(sb.SeMIS_Bay_Nataf(Tfun)))
+    smc_SuS = sb.SeMCS(sb.ES(IntBay_SuS, rng=rng))
+    smc_SeMIS = sb.SeMCS(sb.ES(sb.SeMIS_Bay_Nataf(Tfun), rng=rng))
     smc_SeMIS.NumSam = 1700
     smc_SuS.NumSam = 1000
     smc_SeMIS.Verbose = smc_SuS.Verbose = False
@@ -74,7 +74,7 @@ def run_once(Tfun, G_semis=None, check_weights=None):
     out_sm = smc_SeMIS.RunIte()
     out_mis = sb.MIS(out_sm)
     r = dict(z_mis=out_mis.Z, u_pos_semis=out_mis.PosSim()[0],
-             z_sis=out_mis.C[-1] + out_sm["g"][-1][1], G_semis=np.vstack(out_sm["g"]),
+             z_sis=out_mis.C[-1] + out_sm["g"][-1]["parameters"][1], G_semis=np.vstack([g["parameters"] for g in out_sm["g"]]),
              Ncal_semis=np.asarray(out_sm["Ncal"]), Nite_semis=out_sm["Nite"], out_semis=out_sm)
     if check_weights is not None:
         check_weights(semis_probabilities(out_sm, out_mis))
@@ -82,7 +82,7 @@ def run_once(Tfun, G_semis=None, check_weights=None):
     out_sus = IntBay_SuS.BayInf(out_sm)
     if check_weights is not None:
         check_weights(sus_probabilities(out_sm))
-    r.update(z_sus=out_sus["z"], u_pos_sus=out_sus["x_pos"], G_sus=np.vstack(out_sm["g"]),
+    r.update(z_sus=out_sus["z"], u_pos_sus=out_sus["x_pos"], G_sus=np.vstack([g["parameters"] for g in out_sm["g"]]),
              Ncal_sus=np.asarray(out_sm["Ncal"]), Nite_sus=out_sm["Nite"])
     return r
 
@@ -127,7 +127,7 @@ def replay_case(fn, Tfun, G_semis=None):
     rng = ReplayRNG(fn)
     _utils.set_rng(rng)
     try:
-        return run_once(Tfun, G_semis, rng.check_last_probabilities), rng
+        return run_once(Tfun, G_semis, rng.check_last_probabilities, rng=rng), rng
     except RuntimeError:            # the random stream no longer matches: the runs diverged
         return None, rng
     finally:
@@ -140,7 +140,7 @@ def search_tie(Tfun, out, G_m, G_p):
     k = next(i for i in range(1, min(len(G_m), len(G_p)))
              if not np.allclose(G_m[i], G_p[i], rtol=1e-10, atol=1e-12))
     obj = sb.SeMIS_Bay_Nataf(Tfun)
-    obj.G = np.array(G_m[k - 1])
+    obj.G = {"parameters": np.array(G_m[k - 1])}
     y, p = out["y"][k - 1], sb.SeMCS(sb.ES(obj)).ConPrb
     f = [abs(logmean(ResRat(obj, y, np.array([r, G_m[k][1]]))[0], None) - np.log(p))
          for r in (G_p[k][0], G_m[k][0])]
@@ -199,11 +199,11 @@ def free_G(fn, Tfun, nlev):
     rng = ReplayRNG(fn)
     _utils.set_rng(rng)
     try:
-        smc = sb.SeMCS(sb.ES(sb.SeMIS_Bay_Nataf(Tfun)))
+        smc = sb.SeMCS(sb.ES(sb.SeMIS_Bay_Nataf(Tfun), rng=rng))
         smc.NumSam = 1700
         smc.Verbose = False
         smc.MaxIte = nlev
-        return list(smc.RunIte()["g"])
+        return [g["parameters"] for g in smc.RunIte()["g"]]
     finally:
         _utils.set_rng(None)
 

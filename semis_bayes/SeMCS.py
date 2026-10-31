@@ -65,7 +65,10 @@ class SeMCS:
 
         if use_G:
             Nite_int = len(self.G)
-            g[:Nite_int] = list(self.G)
+            g[:Nite_int] = [dict(v) if isinstance(v, dict) else {"parameters": np.asarray(v), "lambda": 0.6} for v in self.G]
+            intBay = copy.copy(intBay)
+            intBay.G = g[0]
+            sampler.BayStc = intBay
         else:
             Nite_int = 0
             g[0] = intBay.G
@@ -85,7 +88,8 @@ class SeMCS:
             # 2) update intermediate distribution parameter g
             if ite + 1 <= Nite_int:
                 intBay = copy.copy(intBay)
-                intBay.G = g[i + 1]
+                intBay.G = {**g[i + 1], **{k: intBay.G[k] for k in ("lambda", "HMC_time") if k in intBay.G}}
+                g[i + 1] = intBay.G
             else:
                 g[i + 1], intBay = intBay.UpdObj(y[i], p)
             sampler.BayStc = intBay
