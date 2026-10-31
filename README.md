@@ -78,11 +78,18 @@ pip install -r requirements.txt
 │   ├── mcmc_samplers/                   # elliptical slice sampling (ES.py) and adaptive conditional sampling (aCS.py)
 │   ├── likelihood_functions/            # benchmark likelihoods with reference log-evidence
 │   ├── support_functions/               # weights, seed selection and other helpers
-│   └── log_operations.py                # log-domain arithmetic (logsum, logplus, logmean, ...)
+│   ├── operations_on_logarithmic_values/  # one .py file per MATLAB log function
+│   └── log_operations.py                # backward-compatible imports
 ├── validation/                          # recorded fixtures used by validate.py
 ├── LICENSE
 └── README.md
 ```
+
+The logarithmic helpers use matching MATLAB/Python filenames: `logsum`,
+`logmean`, `logplus`, `logminus`, `logmultiply`, `logcumsum`, and `logstd`.
+Their Python implementations are in `operations_on_logarithmic_values/`;
+existing imports from `log_operations` remain supported.
+
 
 ## Quick start
 
