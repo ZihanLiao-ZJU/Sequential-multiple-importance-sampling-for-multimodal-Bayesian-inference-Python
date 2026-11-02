@@ -87,7 +87,7 @@ for irun in range(Nrun):
 
 # %% Performance and efficiency statistics
 ddof = 1 if Nrun > 1 else 0
-# relative bias and coefficient of variation of evidence (%)
+# mean and sample SD of normalized log-evidence error (%) — not evidence CoV
 logz_SeMIS_MIS_bias = np.mean(logz_SeMIS_MIS / logz_ref - 1) * 100
 logz_SeMIS_MIS_cv = np.std(logz_SeMIS_MIS / logz_ref - 1, ddof=ddof) * 100
 
@@ -106,7 +106,7 @@ Ncal_SuS_mu = np.mean(Ncal_SuS)
 
 print("================================================")
 print(f"Results over {Nrun} runs (reference log-evidence {logz_ref:.4f})")
-print(f"{'':10s} {'mean logz':>10s} {'bias (%)':>9s} {'CoV (%)':>8s} {'Ncal':>8s} {'Npos/Ncal (%)':>14s}")
+print(f"{'':10s} {'mean logz':>10s} {'bias (%)':>9s} {'SD (%)':>8s} {'Ncal':>8s} {'Npos/Ncal (%)':>14s}")
 print(f"{'SeMIS-MIS':10s} {np.mean(logz_SeMIS_MIS):10.4f} {logz_SeMIS_MIS_bias:9.3f} {logz_SeMIS_MIS_cv:8.3f} "
       f"{Ncal_SeMIS_mu:8.0f} {Npos_Ncal_SeMIS_mu:14.2f}")
 print(f"{'SeMIS-SIS':10s} {np.mean(logz_SeMIS_SIS):10.4f} {logz_SeMIS_SIS_bias:9.3f} {logz_SeMIS_SIS_cv:8.3f}")

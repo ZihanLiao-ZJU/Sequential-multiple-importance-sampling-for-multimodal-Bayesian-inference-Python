@@ -31,23 +31,27 @@ class RegressionTests(unittest.TestCase):
                 x = Nataf([d], np.eye(1)).U2X(u)
                 np.testing.assert_allclose(x, frozen.ppf(stats.norm.cdf(u)))
 
-    def test_parameterized_fast_paths_keep_extreme_tails(self):
-        u = np.array([[-10., 10.]])
-        for d in [makedist("Normal", mu=2, sigma=3), makedist("Lognormal", mu=.2, sigma=.3)]:
-            self.assertTrue(np.all(np.isfinite(Nataf([d], np.eye(1)).U2X(u))))
+    def test_parameterized_tails_follow_original_cdf_icdf(self):
+        u = np.array([[-10., 0., 10.]])
+        for d in [makedist("Normal", mu=2, sigma=3), makedist("Lognormal", mu=.2, sigma=.3),
+                  makedist("GeneralizedExtremeValue", k=.2)]:
+            expected = d.icdf(stats.norm.cdf(u))
+            np.testing.assert_array_equal(Nataf([d], np.eye(1)).U2X(u), expected)
 
-    def test_negative_uniform_correlation(self):
+    def test_original_negative_uniform_correlation_limitation(self):
         obj = Nataf([makedist("Uniform", lower=-1, upper=1)] * 2,
                     np.array([[1., -.5], [-.5, 1.]]))
-        # Gaussian-copula uniform correlation: rho_X = 6/pi * asin(rho_U/2).
-        self.assertAlmostEqual(obj.Rho_U[0, 1], 2 * np.sin(-np.pi / 12), delta=1e-4)
+        # Deliberately preserve original MATLAB's (0,1) interval, not a corrected copula.
+        self.assertGreaterEqual(obj.Rho_U[0, 1], 0.)
+        self.assertLess(obj.Rho_U[0, 1], 1e-3)
 
-    def test_zero_pair_in_correlated_matrix_skips_quadrature(self):
-        # Pairs (0,2) and (1,2) are independent despite another correlated pair.
+    def test_original_zero_pair_in_correlated_matrix_uses_quadrature(self):
         R = np.array([[1., .2, 0.], [.2, 1., 0.], [0., 0., 1.]])
         ds = [makedist("Normal"), makedist("Normal"), makedist("Uniform")]
-        with patch("semis_bayes.Nataf.GauIntPot", side_effect=AssertionError("unexpected quadrature")):
-            np.testing.assert_array_equal(Nataf(ds, R).Rho_U, R)
+        out = Nataf(ds, R).Rho_U
+        self.assertGreater(out[0, 2], 0.)
+        self.assertLess(out[0, 2], 1e-3)
+        self.assertAlmostEqual(out[0, 1], .2)
 
     def test_complex_cumsum_both_axes_preserves_sign(self):
         a = np.array([[0, np.log(2) + 1j * np.pi, np.log(3)]])
