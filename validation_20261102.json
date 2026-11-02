@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "source_analysis_sha256": "6e1d72c0f481bdae41f76238e9ace258c461dae18c456448154d596f1da2102f",
+  "rows": [
+    {
+      "case": "eggbox (2D)",
+      "N": 1700,
+      "repeats": 100,
+      "paired_exact": true,
+      "source_log_reference_rounded": 235.86,
+      "mean_logZ": 235.86545648241474,
+      "sample_SD_logZ": 0.12919370960837265,
+      "mean_Ncal": 38446.87,
+      "E_log": 0.011535465851656579,
+      "source_E_log": 0.011195999999999998,
+      "ratio": 1.0303202797120918,
+      "source_CoV_Z": null,
+      "source_E_Z": null
+    },
+    {
+      "case": "loggamma (2D)",
+      "N": 1700,
+      "repeats": 100,
+      "paired_exact": true,
+      "source_log_reference_rounded": -8.19,
+      "mean_logZ": -8.184259594561409,
+      "sample_SD_logZ": 0.09192405594367385,
+      "mean_Ncal": 19983.15,
+      "E_log": 2.5174131796941603,
+      "source_E_log": 2.459367,
+      "ratio": 1.0236020812242177,
+      "source_CoV_Z": null,
+      "source_E_Z": null
+    },
+    {
+      "case": "loggamma (5D)",
+      "N": 1700,
+      "repeats": 100,
+      "paired_exact": true,
+      "source_log_reference_rounded": -20.47,
+      "mean_logZ": -20.46166398946617,
+      "sample_SD_logZ": 0.1850444645828045,
+      "mean_Ncal": 85320.3,
+      "E_log": 6.972184721234823,
+      "source_E_log": 7.3374559999999995,
+      "ratio": 0.950218266553806,
+      "source_CoV_Z": null,
+      "source_E_Z": null
+    }
+  ]
+}

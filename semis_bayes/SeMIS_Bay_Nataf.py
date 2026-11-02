@@ -1,3 +1,4 @@
+from semcs_core import state_property
 import copy
 
 import numpy as np
@@ -9,17 +10,18 @@ from .support_functions.ResRat import ResRat
 from .support_functions.logGauss import logGauss
 
 
-def fminbnd(fun, a, b):
+def fminbnd(fun, a, b, options=None):
     """MATLAB fminbnd (golden section + parabolic interpolation, TolX = 1e-4).
 
     scipy's bounded method implements the same algorithm with the same
     stopping rule. Returns (x, fval).
     """
-    res = minimize_scalar(fun, bounds=(a, b), method="bounded", options={"xatol": 1e-4, "maxiter": 500})
+    res = minimize_scalar(fun, bounds=(a, b), method="bounded", options={"xatol": 1e-4, "maxiter": 500} if options is None else options)
     return res.x, res.fun
 
 
 class SeMIS_Bay_Nataf:
+    Nsam = state_property("Nsam",1000)
     """SeMIS Bayesian updating in Nataf-transformed (standard normal) space.
 
     Paper-aligned naming:
@@ -40,7 +42,9 @@ class SeMIS_Bay_Nataf:
         self.X = None
         self.Y = None
         # intermediate parameters G = [r_i, r_max]
-        self.G = {"parameters": np.array([-np.inf, -np.inf]), "lambda": 0.6}
+        self.G = {"parameters": np.array([-np.inf, -np.inf]), "lambda": 0.6, "L": np.eye(self.Ndim), "p": 0.1, "Nsam": 1000,
+                  "completion_threshold": -1e-4,
+                  "search": dict(subintervals=100, lower=-1e12, upper=0.0, xatol=1e-4, maxiter=500)}
 
     def EvlLKF(self):
         """Soft truncation term logLi = min(logL - r_max - r_i, 0)."""
@@ -66,17 +70,18 @@ class SeMIS_Bay_Nataf:
         r_max = max(np.nanmax(logL), obj.G["parameters"][1])
         dr_max = r_max - obj.G["parameters"][1]
 
-        maxi = 100
+        maxi = int(obj.G["search"]["subintervals"])
         err_min = np.inf
 
         def fun(ri):
             return abs(logmean(ResRat(obj, y, np.array([ri, r_max]))[0], None) - np.log(p))
 
-        rmin = max(-1e12, r_i - dr_max)
-        rmax = 0.0
+        rmin = max(obj.G["search"]["lower"], r_i - dr_max)
+        rmax = obj.G["search"]["upper"]
         rbnd = (rmax - rmin) / maxi
         for i in range(1, maxi + 1):
-            r_tmp, err = fminbnd(fun, rmin + (i - 1) * rbnd, rmin + i * rbnd)
+            r_tmp, err = fminbnd(fun, rmin + (i - 1) * rbnd, rmin + i * rbnd,
+                                    {k:obj.G["search"][k] for k in ("xatol","maxiter")})
             if err < err_min:
                 err_min = err
                 r_i = r_tmp
@@ -87,7 +92,7 @@ class SeMIS_Bay_Nataf:
 
     @property
     def FlgCvg(self):
-        return bool(self.G["parameters"][0] >= -1e-4)
+        return bool(self.G["parameters"][0] >= self.G.get("completion_threshold", -1e-4))
 
     def EvlY(self, u):
         """Evaluate and cache the base terms obj.Y = [logL; logPi] at u (U-space)."""

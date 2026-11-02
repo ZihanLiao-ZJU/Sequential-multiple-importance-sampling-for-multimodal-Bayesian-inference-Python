@@ -1,3 +1,4 @@
+from semcs_core import state_property
 import copy
 
 import numpy as np
@@ -18,6 +19,7 @@ def _mmin(a, b):
 
 
 class SuS_Bay_Nataf:
+    Nsam = state_property("Nsam",1000)
     """Subset simulation (SuS) with Nataf transformation for Bayesian updating.
 
     Naming convention (consistent with SeMIS_Bay_Nataf):
@@ -35,7 +37,8 @@ class SuS_Bay_Nataf:
         self.Ncal = None
         self.X = None
         self.Y = None
-        self.G = {"parameters": np.array([-np.inf, -np.inf]), "lambda": 0.6}
+        self.G = {"parameters": np.array([-np.inf, -np.inf]), "lambda": 0.6, "L": np.eye(self.Ndim), "p": 0.1, "Nsam": 1000,
+                  "completion_threshold": -1e-1}
 
     def EvlLKF(self):
         """HARD truncation term: logLi = log(I(logL > r_max + r_i))."""
@@ -91,7 +94,7 @@ class SuS_Bay_Nataf:
 
     @property
     def FlgCvg(self):
-        return bool(self.G["parameters"][0] >= -1e-1)
+        return bool(self.G["parameters"][0] >= self.G.get("completion_threshold", -1e-1))
 
     def BayInf(self, inp):
         """Evidence estimation and posterior resampling from the SuS levels."""
