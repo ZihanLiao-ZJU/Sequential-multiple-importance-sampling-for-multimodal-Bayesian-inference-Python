@@ -5,7 +5,7 @@ import numpy as np
 from scipy.optimize import minimize_scalar
 
 from ._utils import flat
-from .log_operations import logmean
+from .operations_on_logarithmic_values import logmean
 from .support_functions.ResRat import ResRat
 from .support_functions.logGauss import logGauss
 

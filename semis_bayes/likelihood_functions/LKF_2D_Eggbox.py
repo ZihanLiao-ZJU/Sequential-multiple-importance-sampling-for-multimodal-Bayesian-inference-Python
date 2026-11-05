@@ -2,7 +2,7 @@ import numpy as np
 
 from ..Nataf import Nataf
 from ..distributions import makedist
-from ..log_operations import logsum
+from ..operations_on_logarithmic_values import logsum
 from ._marginals import ks_statistic, plot_2d
 
 

@@ -83,7 +83,6 @@ pip install -r requirements.txt
     │   ├── LKF_nD_GaussianShells.py
     │   ├── __init__.py
     │   └── _marginals.py
-    ├── log_operations.py
     ├── mcmc_samplers/
     │   ├── CW_aMH.py
     │   ├── ES.py
@@ -100,7 +99,6 @@ pip install -r requirements.txt
         ├── ResRat.py
         ├── SedSlt.py
         ├── VabCmb.py
-        ├── VabSrk.py
         ├── WgtMis_Blc.py
         ├── WgtPos.py
         ├── __init__.py
