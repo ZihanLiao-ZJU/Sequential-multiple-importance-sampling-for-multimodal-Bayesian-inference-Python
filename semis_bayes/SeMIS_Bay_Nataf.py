@@ -47,9 +47,15 @@ class SeMIS_Bay_Nataf:
         self.X = None
         self.Y = None
         # intermediate parameters G = [r_i, r_max]
-        self.G = {"parameters": np.array([-np.inf, -np.inf]), "lambda": 0.6, "L": np.eye(self.Ndim), "p": 0.1, "Nsam": 1000,
-                  "completion_threshold": -1e-4,
-                  "search": dict(subintervals=100, lower=-1e12, upper=0.0, xatol=1e-4, maxiter=500)}
+        self.G = {
+            "parameters": np.array([-np.inf, -np.inf]),
+            "lambda": 0.6,
+            "L": np.eye(self.Ndim),
+            "p": 0.1,
+            "Nsam": 1000,
+            "completion_threshold": -1e-4,
+            "search": dict(subintervals=100, lower=-1e12, upper=0.0, xatol=1e-4, maxiter=500),
+        }
 
     def EvlLKF(self):
         """Soft truncation term logLi = min(logL - r_max - r_i, 0)."""
@@ -85,8 +91,12 @@ class SeMIS_Bay_Nataf:
         rmax = obj.G["search"]["upper"]
         rbnd = (rmax - rmin) / maxi
         for i in range(1, maxi + 1):
-            r_tmp, err = fminbnd(fun, rmin + (i - 1) * rbnd, rmin + i * rbnd,
-                                    {k:obj.G["search"][k] for k in ("xatol","maxiter")})
+            r_tmp, err = fminbnd(
+                fun,
+                rmin + (i - 1) * rbnd,
+                rmin + i * rbnd,
+                {k: obj.G["search"][k] for k in ("xatol", "maxiter")},
+            )
             if err < err_min:
                 err_min = err
                 r_i = r_tmp
@@ -123,63 +133,109 @@ class SeMIS_Bay_Nataf:
     def run_defaults(self):
         return dict(Verbose=True)
 
-    def start_run(self,owner,sampler):
-        owner.IntBay.G=dict(owner.IntBay.G,p=owner.ConPrb)
-        sampler=copy.copy(sampler); model=owner.IntBay
-        counts=np.atleast_1d(owner.NumSam)
-        limit=owner.MaxIte
+    def start_run(self, owner, sampler):
+        owner.IntBay.G = dict(owner.IntBay.G, p=owner.ConPrb)
+        sampler = copy.copy(sampler)
+        model = owner.IntBay
+        counts = np.atleast_1d(owner.NumSam)
+        limit = owner.MaxIte
         # Preserve the historical max-iteration and schedule conventions.
-        ns=np.zeros(limit+1,dtype=int)
-        if counts.size>1: ns[:counts.size]=counts
-        else: ns[:]=counts[0]
-        schedule=[copy.deepcopy(v) if isinstance(v,dict) else
-                  dict(parameters=np.asarray(v).copy(), **{"lambda":0.6})
-                  for v in owner.G]
-        if len(schedule):
-            model=copy.copy(model)
-            model.G=prescribed_state(model.G,schedule[0],initial=True)
-            sampler.BayStc=model
-        return dict(owner=owner,model=model,sampler=sampler,limit=limit,
-                    targets=ns,schedule=schedule,nc=int(ns[0]),steps=1,
-                    xseed=None,yseed=None,x=[],y=[],g=[copy.deepcopy(model.G)],
-                    Nsam=[],Nsze=[],Ncal=[],complete=False)
-
-    def sample_level(self,c,level):
-        if level==0:
-            x,y,calls,model=c["sampler"].SamGen(c["nc"],c["steps"])
+        ns = np.zeros(limit + 1, dtype=int)
+        if counts.size > 1:
+            ns[: counts.size] = counts
         else:
-            x,y,calls,model=c["sampler"].SamGen(c["xseed"],c["yseed"],c["steps"])
-        c["model"]=model
-        record=dict(x=x,y=y,calls=calls,count=c["nc"]*c["steps"],shape=(c["nc"],c["steps"]))
-        c["x"].append(x);c["y"].append(y);c["Ncal"].append(calls)
-        c["Nsam"].append(record["count"]);c["Nsze"].append(record["shape"])
+            ns[:] = counts[0]
+        schedule = [
+            (
+                copy.deepcopy(v)
+                if isinstance(v, dict)
+                else dict(parameters=np.asarray(v).copy(), **{"lambda": 0.6})
+            )
+            for v in owner.G
+        ]
+        if len(schedule):
+            model = copy.copy(model)
+            model.G = prescribed_state(model.G, schedule[0], initial=True)
+            sampler.BayStc = model
+        return dict(
+            owner=owner,
+            model=model,
+            sampler=sampler,
+            limit=limit,
+            targets=ns,
+            schedule=schedule,
+            nc=int(ns[0]),
+            steps=1,
+            xseed=None,
+            yseed=None,
+            x=[],
+            y=[],
+            g=[copy.deepcopy(model.G)],
+            Nsam=[],
+            Nsze=[],
+            Ncal=[],
+            complete=False,
+        )
+
+    def sample_level(self, context, level):
+        if level == 0:
+            x, y, calls, model = context["sampler"].SamGen(context["nc"], context["steps"])
+        else:
+            x, y, calls, model = context["sampler"].SamGen(
+                context["xseed"], context["yseed"], context["steps"]
+            )
+        context["model"] = model
+        record = dict(
+            x=x,
+            y=y,
+            calls=calls,
+            count=context["nc"] * context["steps"],
+            shape=(context["nc"], context["steps"]),
+        )
+        context["x"].append(x)
+        context["y"].append(y)
+        context["Ncal"].append(calls)
+        context["Nsam"].append(record["count"])
+        context["Nsze"].append(record["shape"])
         return record
 
-    def advance_level(self,c,r,level):
-        model=c["model"]
-        if level+1<len(c["schedule"]):
-            model=copy.copy(model)
-            model.G=prescribed_state(model.G,c["schedule"][level+1])
+    def advance_level(self, context, record, level):
+        model = context["model"]
+        if level + 1 < len(context["schedule"]):
+            model = copy.copy(model)
+            model.G = prescribed_state(model.G, context["schedule"][level + 1])
         else:
-            _,model=model.UpdObj(r["y"],c["owner"].ConPrb)
-        c["model"]=model;c["sampler"].BayStc=model
-        c["g"].append(copy.deepcopy(model.G))
+            _, model = model.UpdObj(record["y"], context["owner"].ConPrb)
+        context["model"] = model
+        context["sampler"].BayStc = model
+        context["g"].append(copy.deepcopy(model.G))
 
-    def select_run_seeds(self,c,r,level):
-        target=int(c["targets"][level+1])
-        xs,ys=SedSlt(c["model"],r["x"],r["y"],target)
-        c["xseed"],c["yseed"]=xs,ys
-        c["nc"]=xs.shape[1]
-        c["steps"]=mround(target/c["nc"]) if c["nc"] else np.inf
-        if c["owner"].Verbose: DspRst(level+1,r["count"],np.asarray(r["shape"]),r["calls"])
+    def select_run_seeds(self, context, record, level):
+        target = int(context["targets"][level + 1])
+        xs, ys = SedSlt(context["model"], record["x"], record["y"], target)
+        context["xseed"], context["yseed"] = xs, ys
+        context["nc"] = xs.shape[1]
+        context["steps"] = mround(target / context["nc"]) if context["nc"] else np.inf
+        if context["owner"].Verbose:
+            DspRst(level + 1, record["count"], np.asarray(record["shape"]), record["calls"])
 
-    def run_complete(self,c,r,phase):
-        if phase!="after_seeds": return False
-        if c["nc"]<=0 or len(c["x"])+1==c["limit"]: return True
-        c["complete"]=bool(c["model"].FlgCvg)
-        return c["complete"]
+    def run_complete(self, context, record, phase):
+        if phase != "after_seeds":
+            return False
+        if context["nc"] <= 0 or len(context["x"]) + 1 == context["limit"]:
+            return True
+        context["complete"] = bool(context["model"].FlgCvg)
+        return context["complete"]
 
-    def finish_run(self,c):
-        return dict(x=c["x"],y=c["y"],g=c["g"],Nsam=np.asarray(c["Nsam"]),
-                    Nsze=np.asarray(c["Nsze"],dtype=int),Ncal=np.asarray(c["Ncal"]),
-                    Nite=len(c["x"]),flg_cvg=c["complete"],intBay=c["model"])
+    def finish_run(self, context):
+        return dict(
+            x=context["x"],
+            y=context["y"],
+            g=context["g"],
+            Nsam=np.asarray(context["Nsam"]),
+            Nsze=np.asarray(context["Nsze"], dtype=int),
+            Ncal=np.asarray(context["Ncal"]),
+            Nite=len(context["x"]),
+            flg_cvg=context["complete"],
+            intBay=context["model"],
+        )
