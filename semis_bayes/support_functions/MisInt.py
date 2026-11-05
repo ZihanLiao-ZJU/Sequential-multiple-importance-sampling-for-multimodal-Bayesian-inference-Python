@@ -1,6 +1,6 @@
 import numpy as np
 
-from ..operations_on_logarithmic_values import logmean
+from ..log_operations import logmean
 
 
 def MisInt(w_mis, w_tag):

@@ -1,4 +1,3 @@
 numpy>=1.22
 scipy>=1.8
 matplotlib>=3.5  # optional, for plotting
-semcs-core @ git+https://github.com/ZihanLiao-ZJU/Sequential-multiple-importance-sampling-for-Reliability-Estimation-Python.git@28e0932bfcf3c7aa1e92f4ffb57a15f1d2b2bc29

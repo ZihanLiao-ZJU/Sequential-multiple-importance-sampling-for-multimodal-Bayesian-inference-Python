@@ -4,7 +4,7 @@ import copy
 import numpy as np
 
 from ._utils import flat, mround, randi, randperm, randsample
-from .operations_on_logarithmic_values import logmean, logminus, logsum
+from .log_operations import logmean, logminus, logsum
 from .support_functions.ResRat import ResRat
 from .support_functions.VabCmb import VabCmb
 from .support_functions.logGauss import logGauss

@@ -3,7 +3,7 @@ import copy
 import numpy as np
 
 from ._utils import flat, mround, randsample
-from .operations_on_logarithmic_values import logmean, logsum
+from .log_operations import logmean, logsum
 from .support_functions.MisInt import MisInt
 from .support_functions.ResRat import ResRat
 from .support_functions.VabCmb import VabCmb
