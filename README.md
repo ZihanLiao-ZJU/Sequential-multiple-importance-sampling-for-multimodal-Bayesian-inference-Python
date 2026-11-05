@@ -14,7 +14,6 @@ Python implementation of the **Sequential Multiple Importance Sampling (SeMIS)**
 - [Benchmark likelihoods](#benchmark-likelihoods)
 - [Custom likelihood](#custom-likelihood)
 - [Outputs](#outputs)
-- [Validation against MATLAB](#validation-against-matlab)
 - [Differences from the MATLAB version](#differences-from-the-matlab-version)
 - [Citation](#citation)
 - [License](#license)
@@ -64,24 +63,48 @@ pip install -r requirements.txt
 
 ## Repository structure
 
-```
-.
-├── drive_SuS_SeMIS.py                   # driver: runs SeMIS and SuS on a benchmark problem
-├── validate.py                          # comparison with the MATLAB implementation
-├── semis_bayes/
-│   ├── SeMIS_Bay_Nataf.py               # SeMIS intermediate distributions (soft truncation) in standard normal space
-│   ├── SuS_Bay_Nataf.py                 # subset simulation for Bayesian updating (comparison)
-│   ├── SeMCS.py                         # sequential Monte Carlo loop shared by SeMIS and SuS
-│   ├── MIS.py                           # MIS estimator and posterior resampling
-│   ├── Nataf.py                         # Nataf transformation between physical and standard normal space
-│   ├── distributions.py                 # `makedist`: MATLAB-style distribution objects on top of scipy.stats
-│   ├── mcmc_samplers/                   # elliptical slice sampling (ES.py) and adaptive conditional sampling (aCS.py)
-│   ├── likelihood_functions/            # benchmark likelihoods with reference log-evidence
-│   ├── support_functions/               # weights, seed selection and other helpers
-│   └── log_operations.py                # log-domain arithmetic (logsum, logplus, logmean, ...)
-├── validation/                          # MATLAB random streams and results used by validate.py
+```text
 ├── LICENSE
-└── README.md
+├── README.md
+├── drive_SuS_SeMIS.py
+├── requirements.txt
+└── semis_bayes/
+    ├── MIS.py
+    ├── Nataf.py
+    ├── SeMCS.py
+    ├── SeMIS_Bay_Nataf.py
+    ├── SuS_Bay_Nataf.py
+    ├── __init__.py
+    ├── _utils.py
+    ├── distributions.py
+    ├── likelihood_functions/
+    │   ├── LKF_2D_Eggbox.py
+    │   ├── LKF_nD_GaussianLogGamma.py
+    │   ├── LKF_nD_GaussianShells.py
+    │   ├── __init__.py
+    │   └── _marginals.py
+    ├── log_operations.py
+    ├── mcmc_samplers/
+    │   ├── CW_aMH.py
+    │   ├── ES.py
+    │   ├── HMC.py
+    │   ├── LICENSE
+    │   ├── MCMCBase.py
+    │   ├── __init__.py
+    │   └── aCS.py
+    ├── operations_on_logarithmic_values/
+    │   └── __init__.py
+    └── support_functions/
+        ├── DspRst.py
+        ├── MisInt.py
+        ├── ResRat.py
+        ├── SedSlt.py
+        ├── VabCmb.py
+        ├── VabSrk.py
+        ├── WgtMis_Blc.py
+        ├── WgtPos.py
+        ├── __init__.py
+        └── logGauss.py
 ```
 
 ## Quick start
@@ -183,62 +206,9 @@ During the run, each iteration prints the sample size, the number of chains, the
 | `Ncal_SeMIS_mu`, `Ncal_SuS_mu` | average number of likelihood evaluations per run |
 | `x_pos_SeMIS`, `x_pos_SuS` | posterior samples in the physical parameter space (last run) |
 
-## Validation against MATLAB
+Signed-log arithmetic retains an inherited limitation: an all-negative signed-log slice, including a negative first cumulative prefix, is not handled correctly by `logsum`. Preserving complex `logcumsum` outputs retains mixed-sign prefixes but does not change that reduction algorithm.
 
-```bash
-python -m unittest discover -s tests -v
-python validate.py
-```
-
-1. **Octave reference replay.** `validation/reference/` contains six recorded cases of the MATLAB source running under Octave, including random draws and selected resampling indices, together with the resulting proposal parameters, likelihood-call counts, log-evidence and posterior samples. `validate.py` compares the Python run to those fixtures. `PASS` means a direct replay agrees to round-off; `PASS*` means only a replay with the reference proposal parameters fixed agrees (see below). Neither means native MATLAB runtime equivalence.
-2. **Statistics.** 50 independent Python runs per benchmark (`--nrun` to change); the mean log-evidence of SeMIS (MIS estimator) and SuS is compared with the reference value.
-
-All six `rec_*.mat` / `res_*.mat` pairs are required by default. Missing fixtures,
-NaNs, or mismatched infinity signs fail validation rather than silently passing.
-For an explicitly limited check, select cases by name, for example:
-
-```bash
-python validate.py --replay --case eggbox_2_1 --case shells_2_1
-```
-
-The output reports the selected count out of six. Legacy streams contain selected
-indices, **not reference resampling probabilities**, so matching posterior samples
-alone cannot establish cross-language weight parity. During replay the supplied
-weights are checked for validity and support. Independent Python density formulas
-also check MIS weights/evidence and the actual probabilities supplied to both MIS
-and SuS posterior resampling. These are Python invariants, not recorded MATLAB
-weight comparisons. The deterministic unit tests cover these checks, the sampler
-and likelihood formulas, prior transforms and the edge-case regressions without
-requiring MATLAB or the binary reference fixtures.
-
-One inherited limitation is explicitly tracked as an `expectedFailure`: `logsum`
-does not correctly reduce an array containing only negative signed-log terms
-(`log(abs(x)) + i*pi`). This also limits corresponding all-negative prefixes in
-`logcumsum`. The current change preserves complex cumulative outputs instead of
-discarding their signs, but does not rewrite that shared MATLAB/Python reduction
-algorithm. The benchmark importance weights are nonnegative and do not use this
-unsupported case.
-
-Results of `python validate.py` (50 runs per benchmark):
-
-| Case | Replay vs Octave fixtures | SeMIS mean logZ (std) | SuS mean logZ (std) | Reference |
-|---|---|---|---|---|
-| Gaussian + LogGamma, n = 2 | one direct; one conditional (see note) | −8.193 (0.074) | −8.200 (0.130) | −8.189 |
-| Gaussian + LogGamma, n = 5 | identical | −20.465 (0.196) | −20.533 (0.280) | −20.472 |
-| Gaussian shells, n = 2 | identical | −1.751 (0.074) | −1.774 (0.112) | −1.75 |
-| Gaussian shells, n = 5 | identical | −5.677 (0.148) | −5.709 (0.166) | −5.67 |
-| Eggbox, n = 2 | identical | 235.856 (0.123) | 235.838 (0.160) | 235.856 |
-
-All means are within 2 standard errors of the reference value.
-
-**Note on the second Gaussian + LogGamma replay.** At the last level, the proposal parameter `r_i` is searched with `fminbnd` on 100 sub-intervals, and in this run the objective is exactly flat between the two candidates (the same value, 2.225933576697242, at both). Which one is kept is then decided by round-off in the objective, and Python and MATLAB keep different ones (−1.17e-4 and −5.03e-5); since only the second is above the convergence threshold −1e-4, the Python run takes one more level. `validate.py` detects this, checks that both values are equally good, and replays the run again with MATLAB's `[r_i, r_max]` fixed (`SeMCS.G`): everything else is then identical. The same flat objective can make the MATLAB code itself take a different path on another machine.
-
-The reference streams were recorded by running the original MATLAB code under GNU Octave 8.4 (no MATLAB licence was available) with the scripts in `validation/matlab/`: they shadow `randn`, `rand`, `randperm`, `randi` and `randsample` to log every draw, and `validation/matlab/octave/` provides Octave stand-ins for `makedist`, `pagemtimes` and the `"all"` option of `max`, `min` and `sum`, as well as an `fminbnd` with MATLAB's default tolerance (Octave's own default differs). Octave compares complex numbers by their modulus, so for the recording the sign tests in `logsum`, `logplus` and `logminus` were applied to `real(...)`, which is what MATLAB compares. MATLAB does not need any of these changes. To record them with MATLAB instead:
-
-```matlab
->> cd validation/matlab
->> record_reference('/path/to/Sequential-multiple-importance-sampling-for-multimodal-Bayesian-inference', 'loggamma', 2, 1, '../reference')
-```
+The proposal-parameter search uses `fminbnd` on 100 sub-intervals. For a flat objective, floating-point arithmetic can select different equally good minimizers and change a stopping decision near the convergence threshold.
 
 ## Differences from the MATLAB version
 
