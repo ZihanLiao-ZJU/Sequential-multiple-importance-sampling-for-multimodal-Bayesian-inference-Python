@@ -1,13 +1,12 @@
-from .SeMCS import state_property
 import copy
-
 import numpy as np
 from scipy.optimize import minimize_scalar
-
-from ._utils import flat
+from ._utils import state_property, flat
 from .operations_on_logarithmic_values import logmean
 from .support_functions.ResRat import ResRat
 from .support_functions.logGauss import logGauss
+from .support_functions.DspRst import DspRst
+from .support_functions.SedSlt import SedSlt
 
 
 def fminbnd(fun, a, b, options=None):
@@ -20,12 +19,7 @@ def fminbnd(fun, a, b, options=None):
     return res.x, res.fun
 
 
-from ._utils import mround
-from .support_functions.DspRst import DspRst
-from .support_functions.SedSlt import SedSlt
-
 class SeMIS_Bay_Nataf:
-    Nsam = state_property("Nsam",1000)
     """SeMIS Bayesian updating in Nataf-transformed (standard normal) space.
 
     Paper-aligned naming:
@@ -37,6 +31,8 @@ class SeMIS_Bay_Nataf:
                      = min(logL(theta) - r_max - r_i, 0)
     The ratio beta_i(theta) in Eq. (24) is built in ResRat from two logLi terms.
     """
+
+    Nsam = state_property("Nsam", 1000)
 
     def __init__(self, LKF):
         self.LKF = LKF
@@ -68,7 +64,7 @@ class SeMIS_Bay_Nataf:
         """Prior log-density logPi."""
         return self.Y[1, :]
 
-    def UpdObj(self, y, p):
+    def UpdObj(self, x, y, p):
         """Update G = [r_i, r_max].
 
         r_i solves Eq. (25), logmean(beta_i) = log(p), by a 1D bounded search
@@ -102,7 +98,7 @@ class SeMIS_Bay_Nataf:
 
         G = np.array([r_i, r_max])
         obj.G = {**obj.G, "parameters": G}
-        return obj.G, obj
+        return y, obj.G, obj, 0
 
     @property
     def FlgCvg(self):
@@ -131,7 +127,6 @@ class SeMIS_Bay_Nataf:
 
     RunOptions = dict(
         Defaults=dict(Verbose=True), CountPolicy="padded", LoopOffset=0,
-        PresetMode="protected_lambda", UpdateOutputs=2,
+        PresetMode="protected_lambda",
         SeedFunction=SedSlt, OutputFields=(), DisplayFunction=DspRst,
     )
-

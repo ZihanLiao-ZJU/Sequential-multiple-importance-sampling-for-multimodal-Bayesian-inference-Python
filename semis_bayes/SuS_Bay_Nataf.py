@@ -1,13 +1,12 @@
-from .SeMCS import state_property
 import copy
-
 import numpy as np
-
-from ._utils import flat, mround, randi, randperm, randsample
+from ._utils import state_property, flat, mround, randi, randperm, randsample
 from .operations_on_logarithmic_values import logmean, logminus, logsum
 from .support_functions.ResRat import ResRat
 from .support_functions.VabCmb import VabCmb
 from .support_functions.logGauss import logGauss
+from .support_functions.DspRst import DspRst
+from .support_functions.SedSlt import SedSlt
 
 
 def _mmin(a, b):
@@ -18,12 +17,7 @@ def _mmin(a, b):
     return np.fmin(a, b)
 
 
-from ._utils import mround
-from .support_functions.DspRst import DspRst
-from .support_functions.SedSlt import SedSlt
-
 class SuS_Bay_Nataf:
-    Nsam = state_property("Nsam",1000)
     """Subset simulation (SuS) with Nataf transformation for Bayesian updating.
 
     Naming convention (consistent with SeMIS_Bay_Nataf):
@@ -33,6 +27,8 @@ class SuS_Bay_Nataf:
             r_i   : adaptive threshold (level parameter)
             r_max : running maximum of the log-likelihood
     """
+
+    Nsam = state_property("Nsam", 1000)
 
     def __init__(self, LKF):
         self.LKF = LKF
@@ -57,7 +53,7 @@ class SuS_Bay_Nataf:
         """Prior log-density logPi."""
         return self.Y[1, :]
 
-    def UpdObj(self, y, p):
+    def UpdObj(self, x, y, p):
         """Update G = [r_i, r_max] with the standard SuS quantile rule."""
         obj = copy.copy(self)
         logL = flat(y)[2, :]
@@ -68,7 +64,7 @@ class SuS_Bay_Nataf:
         fth = (l_sorted[Nsed - 1] + l_sorted[Nsed]) / 2 if Nsed > 0 else l_sorted[0]
         G = np.array([fth - r_max, r_max])
         obj.G = {**obj.G, "parameters": G}
-        return obj.G, obj
+        return y, obj.G, obj, 0
 
     def SltSed(self, u, y, Nsam):
         """Select seeds satisfying the hard truncation condition."""
@@ -169,7 +165,6 @@ class SuS_Bay_Nataf:
 
     RunOptions = dict(
         Defaults=dict(Verbose=True), CountPolicy="padded", LoopOffset=0,
-        PresetMode="protected_lambda", UpdateOutputs=2,
+        PresetMode="protected_lambda",
         SeedFunction=SedSlt, OutputFields=(), DisplayFunction=DspRst,
     )
-
