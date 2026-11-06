@@ -4,7 +4,7 @@ from .._utils import flat, mround, randsample
 from .ResRat import ResRat
 
 
-def SedSlt(IntBay, x, y, Nsam):
+def SedSlt(IntBay, x, y, Nsam, rng=None):
     """Select the seeds for the next iteration by weighted random resampling.
 
     x : generated samples [Ndim, ...];  y : function values [Nfun, ...]

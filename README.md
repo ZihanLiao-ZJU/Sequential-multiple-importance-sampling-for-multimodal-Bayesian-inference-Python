@@ -109,6 +109,8 @@ Every toolbox includes the same `SeMCS(sampler).RunIte()` loop. Method classes o
 
 ## Quick start
 
+Set `MaxIte` to the maximum number of sampled levels. A scalar `NumSam` is reused; a vector is a finite per-level budget. The run returns when either limit is reached, and `flg_cvg` reports the method's own convergence criterion. Entries in `G` patch intermediate states; omitted fields and carried `lambda`/`HMC_time` are retained.
+
 Run the driver from the repository root:
 
 ```bash
@@ -188,6 +190,8 @@ Tfun = MyLikelihood()
 The rest of the driver is unchanged.
 
 ## Outputs
+
+The raw sampling history `g` contains `Nite` sampled states followed by one final candidate state. `Nsze` records the chain and step counts at each sampled level.
 
 The post-processing object `out_mis = MIS(out_sm)` provides both outputs from a single SeMIS run:
 

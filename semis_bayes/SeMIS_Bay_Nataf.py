@@ -5,7 +5,6 @@ from ._utils import state_property, flat
 from .operations_on_logarithmic_values import logmean
 from .support_functions.ResRat import ResRat
 from .support_functions.logGauss import logGauss
-from .support_functions.DspRst import DspRst
 from .support_functions.SedSlt import SedSlt
 
 
@@ -125,8 +124,5 @@ class SeMIS_Bay_Nataf:
         """Map U-space samples to X-space via the Nataf transformation."""
         return self.LKF.Pdis.U2X(u)
 
-    RunOptions = dict(
-        Defaults=dict(Verbose=True), CountPolicy="padded", LoopOffset=0,
-        PresetMode="protected_lambda",
-        SeedFunction=SedSlt, OutputFields=(), DisplayFunction=DspRst,
-    )
+    SedSlt = SedSlt
+    Verbose = True
