@@ -2,8 +2,7 @@
 
 Python implementation of the **Sequential Multiple Importance Sampling (SeMIS)** algorithm for multimodal Bayesian inference, with subset simulation (SuS) included for comparison. This is a line-by-line port of the MATLAB code in [Sequential-multiple-importance-sampling-for-multimodal-Bayesian-inference](https://github.com/ZihanLiao-ZJU/Sequential-multiple-importance-sampling-for-multimodal-Bayesian-inference), which accompanies the paper:
 
-> **Sequential multiple importance sampling for multi-modal Bayesian inference.**
-> *Mechanical Systems and Signal Processing*, 245 (2026) 113788. doi: [10.1016/j.ymssp.2025.113788](https://doi.org/10.1016/j.ymssp.2025.113788)
+> Li, B., He, X., & Liao, Z. (2026). Sequential multiple importance sampling for multi-modal Bayesian inference. *Mechanical Systems and Signal Processing, 245*, Article 113788. [https://doi.org/10.1016/j.ymssp.2025.113788](https://doi.org/10.1016/j.ymssp.2025.113788)
 
 ## Contents
 
@@ -230,9 +229,9 @@ The proposal-parameter search uses `fminbnd` on 100 sub-intervals. For a flat ob
 
 ## Citation
 
-If you use this code in your research, please cite:
+If you use this toolbox in your research, please cite:
 
-> Li, B., He, X., & Liao, Z. (2026). Sequential multiple importance sampling for multi-modal Bayesian inference. *Mechanical Systems and Signal Processing*, 245, 113788. https://doi.org/10.1016/j.ymssp.2025.113788
+> Li, B., He, X., & Liao, Z. (2026). Sequential multiple importance sampling for multi-modal Bayesian inference. *Mechanical Systems and Signal Processing, 245*, Article 113788. [https://doi.org/10.1016/j.ymssp.2025.113788](https://doi.org/10.1016/j.ymssp.2025.113788)
 
 ```bibtex
 @article{li2026sequential,
