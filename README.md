@@ -11,8 +11,8 @@ Python implementation of the **Sequential Multiple Importance Sampling (SeMIS)**
 - [Requirements](#requirements)
 - [Repository structure](#repository-structure)
 - [Quick start](#quick-start)
-- [Benchmark likelihoods](#benchmark-likelihoods)
-- [Custom likelihood](#custom-likelihood)
+- [Built-in examples](#built-in-examples)
+- [Using a custom likelihood](#using-a-custom-likelihood)
 - [Outputs](#outputs)
 - [Differences from the MATLAB version](#differences-from-the-matlab-version)
 - [Citation](#citation)
@@ -66,6 +66,7 @@ pip install -r requirements.txt
 Every toolbox includes the same `SeMCS(sampler).RunIte()` loop. Method classes own initialization, intermediate updates, seed selection and convergence. Fixed MCMC options are sampler attributes; evolving proposal scales and trajectory times are stored in the model's `G`. Each repository runs independently.
 
 ```text
+.
 ├── LICENSE
 ├── README.md
 ├── drive_SuS_SeMIS.py
@@ -135,7 +136,7 @@ u_pos = out_mis.PosSim()[0]          # posterior samples in standard normal spac
 x_pos = Tfun.Pdis.U2X(u_pos)         # posterior samples in the parameter space
 ```
 
-## Benchmark likelihoods
+## Built-in examples
 
 | File | Description | Reference log-evidence |
 |---|---|---|
@@ -143,9 +144,9 @@ x_pos = Tfun.Pdis.U2X(u_pos)         # posterior samples in the parameter space
 | `LKF_nD_GaussianLogGamma.py` | Gaussian + LogGamma, n-dimensional | −8.19 (n = 2), −20.47 (n = 5), −40.94 (n = 10), −81.887 (n = 20) |
 | `LKF_nD_GaussianShells.py` | two Gaussian shells, n-dimensional | −1.75 (n = 2) to −255.62 (n = 100); see the class docstring |
 
-Each likelihood class provides the prior (`Pdis`), the log-likelihood and the reference value `logz_ref` used by the driver. `LKF_2D_Eggbox` and `LKF_nD_GaussianLogGamma` also provide the reference marginals, `KStest` (Kolmogorov–Smirnov distance of posterior samples to the reference marginal) and `PltFun`. To solve your own problem, see [Custom likelihood](#custom-likelihood).
+Each likelihood class provides the prior (`Pdis`), the log-likelihood and the reference value `logz_ref` used by the driver. `LKF_2D_Eggbox` and `LKF_nD_GaussianLogGamma` also provide the reference marginals, `KStest` (Kolmogorov–Smirnov distance of posterior samples to the reference marginal) and `PltFun`. To solve your own problem, see [Custom likelihood](#using-a-custom-likelihood).
 
-## Custom likelihood
+## Using a custom likelihood
 
 Any user-defined Bayesian updating problem can be solved by writing a likelihood class with the same interface as the files in `semis_bayes/likelihood_functions/` and passing it to the driver in place of the benchmark. The algorithm only accesses the following members:
 
@@ -248,3 +249,4 @@ If you use this code in your research, please cite:
 ## License
 
 This project is licensed under the MIT License. See [LICENSE](./LICENSE) for details.
+
