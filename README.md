@@ -109,17 +109,15 @@ Every toolbox includes the same `SeMCS(sampler).RunIte()` loop. Method classes o
 
 ## Quick start
 
-Set `MaxIte` to the maximum number of sampled levels. A scalar `NumSam` is reused; a vector is a finite per-level budget. The run returns when either limit is reached, and `flg_cvg` reports the method's own convergence criterion. Entries in `G` patch intermediate states; omitted fields and carried `lambda`/`HMC_time` are retained.
-
-Run the driver from the repository root:
+Run the driver once from the repository root with the `ES` sampler:
 
 ```bash
-python drive_SuS_SeMIS.py
+python drive_SuS_SeMIS.py --nrun 1 --sampler ES
 ```
 
-The driver defines the benchmark problem (by default `LKF_nD_GaussianLogGamma` with `Ndim = 2`), runs SeMIS and SuS for 100 independent runs, and prints the evidence and efficiency statistics described below. `--nrun` changes the number of runs, `--seed` fixes the random seed and `--quiet` hides the progress of each iteration. To change the problem, edit the `Tfun = ...` line and `Ndim` at the top of `drive_SuS_SeMIS.py`. The sample size per level is set by `smc_SeMIS.NumSam` (default 1700) and `smc_SuS.NumSam` (default 1000).
+The driver runs SeMIS and SuS on `LKF_nD_GaussianLogGamma(2)`. In `drive_SuS_SeMIS.py`, change `Tfun` and `Ndim` to choose the problem, and set the scalar sample sizes at `smc_SeMIS.NumSam = 1700` and `smc_SuS.NumSam = 1000`. Use `--sampler` to choose the MCMC sampler; `--seed` fixes the random seed and `--quiet` hides iteration progress.
 
-The same steps from Python code:
+To run only SeMIS once from Python:
 
 ```python
 from semis_bayes import LKF_nD_GaussianLogGamma, SeMIS_Bay_Nataf, SeMCS, ES, MIS
@@ -128,8 +126,8 @@ Tfun = LKF_nD_GaussianLogGamma(2)
 smc_SeMIS = SeMCS(ES(SeMIS_Bay_Nataf(Tfun)))
 smc_SeMIS.NumSam = 1700
 
-out_sm = smc_SeMIS.RunIte()          # SMC iterations
-out_mis = MIS(out_sm)                # MIS post-processing
+out_sm = smc_SeMIS.RunIte()
+out_mis = MIS(out_sm)
 print(out_mis.Z)                     # log-evidence (MIS estimator)
 u_pos = out_mis.PosSim()[0]          # posterior samples in standard normal space
 x_pos = Tfun.Pdis.U2X(u_pos)         # posterior samples in the parameter space
