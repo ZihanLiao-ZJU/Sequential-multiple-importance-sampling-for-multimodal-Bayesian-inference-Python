@@ -1,11 +1,4 @@
-"""Driver: SeMIS and SuS on a benchmark problem.
-
-Python port of drive_SuS_SeMIS.m. Run from the repository root:
-
-    python drive_SuS_SeMIS.py              # 100 runs, Gaussian-LogGamma, Ndim = 2 (as in MATLAB)
-    python drive_SuS_SeMIS.py --nrun 20    # fewer runs
-"""
-import argparse
+"""Edit the settings below, then run this script from the repository root."""
 
 import numpy as np
 
@@ -14,15 +7,8 @@ from semis_bayes.mcmc_samplers import CW_aMH, aCS, HMC, ES
 from semis_bayes import (MIS, ES, LKF_2D_Eggbox, LKF_nD_GaussianLogGamma,  # noqa: F401
                          LKF_nD_GaussianShells, SeMCS, SeMIS_Bay_Nataf, SuS_Bay_Nataf)
 
-parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-parser.add_argument("--nrun", type=int, default=100, help="number of independent runs (default 100)")
-parser.add_argument("--seed", type=int, default=None, help="random seed")
-parser.add_argument("--quiet", action="store_true", help="do not print the progress of each iteration")
-parser.add_argument("--sampler", choices=["CW_aMH", "aCS", "HMC", "ES"], default="ES")
-args = parser.parse_args()
-SamplerClass = {"CW_aMH": CW_aMH, "aCS": aCS, "HMC": HMC, "ES": ES}[args.sampler]
-if args.seed is not None:
-    np.random.seed(args.seed)
+# Sampler selection: CW_aMH, aCS, HMC or ES.
+SamplerClass = ES
 
 # %% Problem definition and target density
 Ndim = 2                                      # parameter dimension
@@ -42,10 +28,10 @@ smc_SeMIS = SeMCS(SamplerClass(IntBay_SeMIS))
 # Sampling budget per level
 smc_SeMIS.NumSam = 1700
 smc_SuS.NumSam = 1000
-smc_SeMIS.Verbose = smc_SuS.Verbose = not args.quiet
+smc_SeMIS.Verbose = smc_SuS.Verbose = True
 
 # %% Monte Carlo experiment settings
-Nrun = args.nrun                              # number of independent runs
+Nrun = 100                              # number of independent runs
 
 # Log-evidence estimates
 logz_SeMIS_MIS = np.zeros(Nrun)               # SeMIS + MIS

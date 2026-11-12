@@ -107,29 +107,17 @@ pip install -r requirements.txt
 
 ## Quick start
 
-Run the driver once from the repository root with the `ES` sampler:
+Edit `Tfun`, `Ndim`, `Nrun`, `SamplerClass`, `smc_SeMIS.NumSam` and `smc_SuS.NumSam` inside `drive_SuS_SeMIS.py`. Select `SamplerClass = ES` (the default), or choose another supplied sampler: `CW_aMH`, `aCS`, `HMC` or `ES`.
+
+The script runs SeMIS and SuS on `LKF_nD_GaussianLogGamma(2)`, with 1700 and 1000 samples per level, respectively. The default is 100 independent runs. For a single run, set `Nrun = 1` inside the script.
+
+Run the chosen script from the repository root:
 
 ```bash
-python drive_SuS_SeMIS.py --nrun 1 --sampler ES
+python drive_SuS_SeMIS.py
 ```
 
-The driver runs SeMIS and SuS on `LKF_nD_GaussianLogGamma(2)`. In `drive_SuS_SeMIS.py`, change `Tfun` and `Ndim` to choose the problem, and set the scalar sample sizes at `smc_SeMIS.NumSam = 1700` and `smc_SuS.NumSam = 1000`. Use `--sampler` to choose the MCMC sampler; `--seed` fixes the random seed and `--quiet` hides iteration progress.
-
-To run only SeMIS once from Python:
-
-```python
-from semis_bayes import LKF_nD_GaussianLogGamma, SeMIS_Bay_Nataf, SeMCS, ES, MIS
-
-Tfun = LKF_nD_GaussianLogGamma(2)
-smc_SeMIS = SeMCS(ES(SeMIS_Bay_Nataf(Tfun)))
-smc_SeMIS.NumSam = 1700
-
-out_sm = smc_SeMIS.RunIte()
-out_mis = MIS(out_sm)
-print(out_mis.Z)                     # log-evidence (MIS estimator)
-u_pos = out_mis.PosSim()[0]          # posterior samples in standard normal space
-x_pos = Tfun.Pdis.U2X(u_pos)         # posterior samples in the parameter space
-```
+Use multiple runs to estimate statistics across independent runs.
 
 ## Built-in examples
 
@@ -215,7 +203,6 @@ The proposal-parameter search uses `fminbnd` on 100 sub-intervals. For a flat ob
 - `RunIte` and `SuS_Bay_Nataf.BayInf` return dictionaries instead of structs, and `MIS.PosSim` returns a tuple `(u_pos, y_pos, u_all, y_all)`.
 - Arrays keep the MATLAB layout (`Ndim × Nc × Ns`, flattened in column-major order); Python indices start at 0.
 - `fminbnd` is `scipy.optimize.minimize_scalar(method="bounded")` with MATLAB's default tolerance (`TolX = 1e-4`); it implements the same golden-section and parabolic-interpolation search.
-- Random numbers are drawn through `semis_bayes._utils` (`randn`, `rand`, `randperm`, `randi`, `randsample`), backed by NumPy; `np.random.seed` fixes a run.
 - `MIS.CCDF` and `MIS.KLDEst` are not ported: they call `IndPriWgt`, `IndPosWgt` and `EpyWgt`, which are not part of the MATLAB repository, and the driver does not use them. `LKF_2D_5Gaussian`, mentioned in a comment of `drive_SuS_SeMIS.m`, is not in the MATLAB repository either.
 - The reference marginals of `LKF_2D_Eggbox` (used only by `KStest`) are computed on first use rather than in the constructor.
 - Eggbox reference grids follow MATLAB's `0:step:10*pi` endpoints; no point beyond `10*pi` is added.
