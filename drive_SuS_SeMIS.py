@@ -4,7 +4,7 @@ import numpy as np
 
 from semis_bayes.mcmc_samplers import CW_aMH, aCS, HMC, ES
 
-from semis_bayes import (MIS, ES, LKF_2D_Eggbox, LKF_nD_GaussianLogGamma,  # noqa: F401
+from semis_bayes import (MIS, LKF_2D_Eggbox, LKF_nD_GaussianLogGamma,  # noqa: F401
                          LKF_nD_GaussianShells, SeMCS, SeMIS_Bay_Nataf, SuS_Bay_Nataf)
 
 # Sampler selection: CW_aMH, aCS, HMC or ES.
@@ -28,7 +28,6 @@ smc_SeMIS = SeMCS(SamplerClass(IntBay_SeMIS))
 # Sampling budget per level
 smc_SeMIS.NumSam = 1700
 smc_SuS.NumSam = 1000
-smc_SeMIS.Verbose = smc_SuS.Verbose = True
 
 # %% Monte Carlo experiment settings
 Nrun = 100                              # number of independent runs
